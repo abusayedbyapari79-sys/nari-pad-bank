@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery Update | Nari Pad Bank</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav>
+        <a href="dashboard.html" class="logo">NPB Portal</a>
+        <div class="nav-links">
+            <a href="dashboard.html">Dashboard</a>
+            <a href="register.html">Register Member</a>
+            <a href="delivery.html">Deliveries</a>
+            <a href="#" id="logoutBtn">Logout</a>
+        </div>
+    </nav>
+
+    <div class="container" style="max-width: 600px;">
+        <div class="glass-card">
+            <h1>Update Delivery</h1>
+            <p id="memberInfo" style="color: var(--text-muted); margin-bottom: 2rem;"></p>
+            
+            <form id="deliveryForm">
+                <input type="hidden" id="memberId">
+                <div class="form-group">
+                    <label>Photo Proof (Take photo or Upload)</label>
+                    <input type="file" id="photo" accept="image/*" required>
+                    <div id="preview" style="margin-top: 1rem; text-align: center;">
+                        <img id="previewImg" style="max-width: 100%; border-radius: 0.5rem; display: none;">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success" style="width: 100%;">Mark as Delivered</button>
+            </form>
+            <p id="message" style="margin-top: 1rem; text-align: center;"></p>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        let base64Photo = '';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            checkAuth();
+            const urlParams = new URLSearchParams(window.location.search);
+            const memberId = urlParams.get('id');
+            
+            if (memberId) {
+                document.getElementById('memberId').value = memberId;
+                // Optionally fetch member details to show name
+                const res = await apiFetch('/api/members');
+                const members = await res.json();
+                const member = members.find(m => m._id === memberId);
+                if (member) {
+                    document.getElementById('memberInfo').innerText = `Updating delivery for: ${member.name} (${member.member_id})`;
+                }
+            } else {
+                document.getElementById('memberInfo').innerText = "Select a member from the dashboard to update delivery.";
+                document.getElementById('deliveryForm').style.opacity = '0.5';
+                document.getElementById('deliveryForm').style.pointerEvents = 'none';
+            }
+        });
+
+        document.getElementById('photo').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                base64Photo = reader.result;
+                const img = document.getElementById('previewImg');
+                img.src = base64Photo;
+                img.style.display = 'block';
+            };
+            if (file) reader.readAsDataURL(file);
+        });
+
+        document.getElementById('deliveryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const memberId = document.getElementById('memberId').value;
+            const message = document.getElementById('message');
+
+            if (!base64Photo) {
+                alert('Please provide photo proof');
+                return;
+            }
+
+            const res = await apiFetch('/api/delivery/update', {
+                method: 'POST',
+                body: JSON.stringify({ memberId, photoProof: base64Photo })
+            });
+            
+            const data = await res.json();
+            if (res.ok) {
+                message.style.color = 'var(--success)';
+                message.innerText = `Delivery updated successfully!`;
+                setTimeout(() => window.location.href = 'dashboard.html', 2000);
+            } else {
+                message.style.color = 'var(--danger)';
+                message.innerText = data.message;
+            }
+        });
+    </script>
+</body>
+</html>
